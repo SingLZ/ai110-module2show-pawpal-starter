@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Optional
+import json
+from pathlib import Path
 
 @dataclass
 class Task:
@@ -79,6 +81,60 @@ class Owner:
         """Return every task across all pets."""
         return [task for pet in self.pets for task in pet.tasks]
 
+    def to_dict(self) -> dict:
+        """Serialize the owner and all pets/tasks to a plain dictionary."""
+        return {
+            "name":  self.name,
+            "email": self.email,
+            "pets": [
+                {
+                    "name":          pet.name,
+                    "species":       pet.species,
+                    "age":           pet.age,
+                    "special_needs": pet.special_needs,
+                    "tasks": [
+                        {
+                            "task_type":  t.task_type,
+                            "due_time":   t.due_time.isoformat(),
+                            "duration":   t.duration,
+                            "priority":   t.priority,
+                            "pet_name":   t.pet_name,
+                            "completed":  t.completed,
+                            "recurrence": t.recurrence,
+                        }
+                        for t in pet.tasks
+                    ],
+                }
+                for pet in self.pets
+            ],
+        }
+
+    def save_to_json(self, path: str = "data.json") -> None:
+        """Save the current owner state to a JSON file."""
+        Path(path).write_text(json.dumps(self.to_dict(), indent=2))
+
+    @classmethod
+    def load_from_json(cls, path: str = "data.json") -> "Owner":
+        """Load an Owner (with pets and tasks) from a JSON file."""
+        if not Path(path).exists():
+            return cls(name="My Owner", email="owner@example.com")
+        data = json.loads(Path(path).read_text())
+        owner = cls(name=data["name"], email=data["email"])
+        for p in data["pets"]:
+            pet = Pet(p["name"], p["species"], p["age"], p["special_needs"])
+            for t in p["tasks"]:
+                pet.add_task(Task(
+                    task_type  = t["task_type"],
+                    due_time   = datetime.fromisoformat(t["due_time"]),
+                    duration   = t["duration"],
+                    priority   = t["priority"],
+                    pet_name   = t["pet_name"],
+                    completed  = t["completed"],
+                    recurrence = t["recurrence"],
+                ))
+            owner.add_pet(pet)
+        return owner
+
 
 class Scheduler:
     """Retrieves, organizes, and prioritizes tasks across all of an owner's pets."""
@@ -143,3 +199,36 @@ class Scheduler:
                         f"{task_b.due_time.strftime('%I:%M %p')})"
                     )
         return warnings
+    
+    def find_next_available_slot(self, duration: int, pet_name: str,
+                              search_from: datetime = None) -> datetime:
+        """Find the next gap in a pet's schedule that fits a task of given duration."""
+        search_from = search_from or datetime.now()
+        pet_tasks = sorted(
+            [t for t in self.filter_by_pet(pet_name)
+            if t.due_time >= search_from and not t.completed],
+            key=lambda t: t.due_time
+        )
+        candidate = search_from.replace(second=0, microsecond=0)
+        for task in pet_tasks:
+            slot_end = candidate + timedelta(minutes=duration)
+            if slot_end <= task.due_time:
+                return candidate       # gap before this task is big enough
+            # push candidate past the end of this task
+            candidate = task.due_time + timedelta(minutes=task.duration)
+        return candidate               # no conflicts found — use this time
+
+    def weighted_priority_score(self, task: Task) -> float:
+        """Score a task combining priority, overdue status, and recurrence.
+        Lower score = should be done sooner."""
+        score = task.priority * 10
+        if task.is_overdue():
+            score -= 20               # overdue tasks jump to the front
+        if task.recurrence:
+            score -= 5                # recurring tasks are slightly more urgent
+        return score
+
+    def smart_prioritize(self) -> list[Task]:
+        """Sort today's pending tasks by weighted score, then due time."""
+        pending = [t for t in self.get_todays_tasks() if not t.completed]
+        return sorted(pending, key=lambda t: (self.weighted_priority_score(t), t.due_time))

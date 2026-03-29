@@ -73,3 +73,67 @@ The suite covers 27 tests across five areas:
 The core logic is well-covered. The main gap is that tests run against today's
 date, so time-sensitive edge cases (e.g., tasks at midnight) aren't explicitly
 tested.
+
+## 📸 Demo
+
+<a href="/app_ui.png" target="_blank">
+  <img src='/app_ui.png' title='PawPal App'
+       width='' alt='PawPal App' class='center-block' />
+</a>
+
+## ✨ Features
+
+- **Add pets and tasks** with species, age, special needs, due time, duration, and priority
+- **Smart sorting** — tasks ordered chronologically using `datetime` comparison
+- **Priority scheduling** — pending tasks ranked by urgency, then time
+- **Recurring tasks** — daily and weekly tasks auto-reschedule on completion using `timedelta`
+- **Conflict detection** — warns when two tasks for the same pet overlap in duration
+- **Live filters** — filter today's schedule by pet or completion status
+- **Overdue alerts** — tasks past their due time are flagged with a red indicator
+- **Summary metrics** — see total, completed, and overdue counts at a glance
+
+## 🏗 Architecture
+
+Four core classes in `pawpal_system.py`:
+
+- `Task` — a single care activity with type, time, duration, priority, and recurrence
+- `Pet` — holds pet details and a list of tasks
+- `Owner` — manages multiple pets and exposes all tasks as a flat list
+- `Scheduler` — the logic layer: sorts, filters, detects conflicts, handles recurrence
+
+See `uml_final.png` for the full class diagram.
+
+## 🚀 Running the App
+```bash
+pip install streamlit
+streamlit run app.py
+```
+
+
+## 🧩 Optional Extensions
+
+### Challenge 1 — Smart scheduling algorithms
+Two new `Scheduler` methods beyond basic sorting:
+- `find_next_available_slot(duration, pet_name)` — scans today's tasks for
+  the earliest gap that fits a new task of the given duration
+- `smart_prioritize()` — scores tasks by priority, overdue status, and
+  recurrence to produce a weighted ranked list
+
+### Challenge 2 — Data persistence
+`Owner.save_to_json()` and `Owner.load_from_json()` serialize the full
+object graph (owner → pets → tasks) to `data.json` using Python's built-in
+`json` module. The app auto-saves on every change and auto-loads on startup.
+
+### Challenge 3 — Priority color coding
+Tasks display color-coded priority badges (🔴 Critical → ⚪ Minimal) and
+task-type icons (🦮 walk, 🍖 feed, 💊 medicate, ✂️ groom) in the UI.
+The schedule view switches to `smart_prioritize()` when filtering for
+pending tasks.
+
+### Challenge 4 — Formatted CLI output
+`main.py` uses `tabulate` with `rounded_outline` formatting to print a
+structured, readable schedule table in the terminal.
+
+### Challenge 5 — Multi-model comparison
+See the Prompt Comparison section in `reflection.md` for a side-by-side
+analysis of GPT-4o vs Claude on the next-available-slot algorithm.
