@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Optional
 
 @dataclass
 class Task:
@@ -10,10 +11,20 @@ class Task:
     priority: int        # 1 = highest priority
     pet_name: str
     completed: bool = False
+    recurrence: Optional[str] = None  # "daily", "weekly", or None
 
     def mark_complete(self) -> None:
         """Mark this task as completed."""
         self.completed = True
+        if self.recurrence == "daily":
+            return Task(self.task_type, self.due_time + timedelta(days=1),
+                        self.duration, self.priority, self.pet_name,
+                        recurrence="daily")
+        if self.recurrence == "weekly":
+            return Task(self.task_type, self.due_time + timedelta(weeks=1),
+                        self.duration, self.priority, self.pet_name,
+                        recurrence="weekly")
+        return None
 
     def is_overdue(self) -> bool:
         """Return True if the task is past due and not completed."""
@@ -93,3 +104,42 @@ class Scheduler:
     def get_overdue_tasks(self) -> list[Task]:
         """Return all incomplete tasks that are past their due time."""
         return [t for t in self.owner.get_all_tasks() if t.is_overdue()]
+    
+    def sort_by_time(self, tasks: list[Task] = None) -> list[Task]:
+        """Return tasks sorted by due time, earliest first."""
+        tasks = tasks or self.owner.get_all_tasks()
+        return sorted(tasks, key=lambda t: t.due_time)
+
+    def filter_by_pet(self, pet_name: str) -> list[Task]:
+        """Return all tasks belonging to a specific pet."""
+        return [t for t in self.owner.get_all_tasks() if t.pet_name == pet_name]
+
+    def filter_by_status(self, completed: bool) -> list[Task]:
+        """Return tasks filtered by completion status."""
+        return [t for t in self.owner.get_all_tasks() if t.completed == completed]
+    
+    def complete_task(self, task: Task, pet: Pet) -> None:
+        """Mark a task complete and auto-schedule the next recurrence."""
+        next_task = task.mark_complete()
+        if next_task:
+            pet.add_task(next_task)
+
+    def detect_conflicts(self) -> list[str]:
+        """Return warning messages for tasks that overlap in time for the same pet."""
+        warnings = []
+        all_tasks = self.sort_by_time(self.get_todays_tasks())
+
+        for i, task_a in enumerate(all_tasks):
+            for task_b in all_tasks[i + 1:]:
+                if task_a.pet_name != task_b.pet_name:
+                    continue
+                a_end = task_a.due_time + timedelta(minutes=task_a.duration)
+                # task_b starts before task_a ends = overlap
+                if task_b.due_time < a_end:
+                    warnings.append(
+                        f"⚠ Conflict: '{task_a.task_type}' and '{task_b.task_type}' "
+                        f"overlap for {task_a.pet_name} "
+                        f"({task_a.due_time.strftime('%I:%M %p')} vs "
+                        f"{task_b.due_time.strftime('%I:%M %p')})"
+                    )
+        return warnings

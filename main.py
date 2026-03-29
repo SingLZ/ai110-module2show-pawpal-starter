@@ -1,42 +1,47 @@
 from datetime import datetime, timedelta
 from pawpal_system import Owner, Pet, Task, Scheduler
 
-# --- Setup ---
-owner = Owner(name="Alex", email="alex@example.com")
-
-dog = Pet(name="Biscuit", species="Dog", age=3, special_needs=["3 walks/day"])
-cat = Pet(name="Luna", species="Cat", age=5, special_needs=["insulin shot"])
-
+owner = Owner("Alex", "alex@example.com")
+dog = Pet("Biscuit", "Dog", 3)
+cat = Pet("Luna", "Cat", 5)
 owner.add_pet(dog)
 owner.add_pet(cat)
 
-# --- Tasks (all due today) ---
 now = datetime.now()
 
-dog.add_task(Task("walk",  now.replace(hour=8,  minute=0),  duration=30, priority=2, pet_name="Biscuit"))
-dog.add_task(Task("feed",  now.replace(hour=12, minute=0),  duration=10, priority=1, pet_name="Biscuit"))
-dog.add_task(Task("walk",  now.replace(hour=18, minute=0),  duration=30, priority=2, pet_name="Biscuit"))
-cat.add_task(Task("medicate", now.replace(hour=9, minute=0), duration=5, priority=1, pet_name="Luna"))
-cat.add_task(Task("feed",  now.replace(hour=13, minute=0),  duration=10, priority=2, pet_name="Luna"))
+# Out-of-order tasks to test sorting
+dog.add_task(Task("walk",     now.replace(hour=18, minute=0),  30, 2, "Biscuit", recurrence="daily"))
+dog.add_task(Task("feed",     now.replace(hour=7,  minute=0),  10, 1, "Biscuit"))
+dog.add_task(Task("groom",    now.replace(hour=7,  minute=20), 20, 3, "Biscuit"))  # conflicts with feed
+cat.add_task(Task("medicate", now.replace(hour=9,  minute=0),   5, 1, "Luna",    recurrence="weekly"))
+cat.add_task(Task("feed",     now.replace(hour=13, minute=0),  10, 2, "Luna"))
 
-# --- Print Schedule ---
 scheduler = Scheduler(owner)
 
-print(f"\n{'='*45}")
-print(f"  PawPal+ — Today's Schedule for {owner.name}")
-print(f"{'='*45}")
+# Sorting
+print("\n--- Sorted by time ---")
+for t in scheduler.sort_by_time(scheduler.get_todays_tasks()):
+    print(" ", t)
 
-tasks = scheduler.prioritize()
-if not tasks:
-    print("  No pending tasks for today!")
+# Filtering
+print("\n--- Biscuit's tasks only ---")
+for t in scheduler.filter_by_pet("Biscuit"):
+    print(" ", t)
+
+# Conflicts
+print("\n--- Conflict detection ---")
+conflicts = scheduler.detect_conflicts()
+if conflicts:
+    for w in conflicts:
+        print(" ", w)
 else:
-    for task in tasks:
-        print(f"  {task}")
+    print("  No conflicts found.")
 
-overdue = scheduler.get_overdue_tasks()
-if overdue:
-    print(f"\n  ⚠  {len(overdue)} overdue task(s):")
-    for task in overdue:
-        print(f"     {task}")
-
-print(f"{'='*45}\n")
+# Recurring task test
+print("\n--- Recurring task test ---")
+feed_task = dog.tasks[1]
+print(f"  Before: {feed_task}")
+next_task = feed_task.mark_complete()
+if next_task:
+    dog.add_task(next_task)
+    print(f"  Auto-scheduled: {next_task}")

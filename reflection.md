@@ -24,10 +24,14 @@ Design did not change during implementation.
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
 - How did you decide which constraints mattered most?
 
+The scheduler considers due time (tasks sorted chronologically), priority (1 = most urgent first), and today's date (only shows tasks due today). Priority was chosen as the primary sort key because a high-priority overdue medication matters more than a low-priority walk at the same time.
+
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
 - Why is that tradeoff reasonable for this scenario?
+
+The scheduler doesn't check for time conflicts — two tasks can overlap. This is a reasonable tradeoff because for a pet care app, the user is the one executing tasks and can adapt.
 
 ---
 
@@ -38,11 +42,15 @@ Design did not change during implementation.
 - How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
 - What kinds of prompts or questions were most helpful?
 
+I use AI tools for debugging test and also for readability. I think the more specific the prompts are the more helpful the ai gets.
+
+
 **b. Judgment and verification**
 
 - Describe one moment where you did not accept an AI suggestion as-is.
 - How did you evaluate or verify what the AI suggested?
 
+Copilot generated get_all_tasks() using a nested loop with instead of a list comprehension, and I did not accept that. I verified the output was identical by running main.py and checking the task count matched.
 ---
 
 ## 4. Testing and Verification
@@ -51,6 +59,8 @@ Design did not change during implementation.
 
 - What behaviors did you test?
 - Why were these tests important?
+
+The four tests above cover task completion state change, task count growth, overdue detection logic, and date filtering in the scheduler. These matter because the scheduler's correctness depends entirely on these building blocks being reliable.
 
 **b. Confidence**
 
