@@ -52,3 +52,24 @@ PawPal+ includes several algorithms beyond basic task listing:
   schedules the next occurrence using `timedelta`.
 - **Conflict detection**: The scheduler scans today's tasks and warns when two
   tasks for the same pet overlap in time, based on start time + duration.
+
+  ## Testing PawPal+
+
+Run the full test suite with:
+
+    python -m pytest
+
+The suite covers 27 tests across five areas:
+
+- **Task behavior**: completion status, overdue detection, recurrence (daily/weekly)
+- **Pet management**: task addition, pending-task filtering, empty-pet edge cases
+- **Owner logic**: multi-pet task flattening, no-pet edge case
+- **Scheduler sorting**: chronological ordering, all tasks preserved
+- **Scheduler filtering**: by pet name, by completion status, nonexistent pet
+- **Conflict detection**: exact overlap, duration overlap, cross-pet (not flagged), no tasks
+
+**Confidence level: ★★★★☆**
+
+The core logic is well-covered. The main gap is that tests run against today's
+date, so time-sensitive edge cases (e.g., tasks at midnight) aren't explicitly
+tested.
